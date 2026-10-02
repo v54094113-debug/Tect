@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КУКЛОВОД · интерактивная история</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0e0e12;
+            color: #e0e0e0;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .game-container {
+            max-width: 820px;
+            width: 100%;
+            background: #16161c;
+            border: 1px solid #2e2e3a;
+            border-radius: 24px;
+            padding: 2rem 2rem 2.2rem;
+            box-shadow: 0 25px 40px -15px rgba(0, 0, 0, 0.9);
+        }
+
+        .title {
+            font-size: 2.2rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-align: center;
+            color: #c9b6a0;
+            border-bottom: 1px solid #2e2e3a;
+            padding-bottom: 1rem;
+            margin-bottom: 1.8rem;
+            font-weight: 400;
+            text-shadow: 0 0 6px rgba(200, 180, 150, 0.15);
+        }
+
+        .scene {
+            transition: opacity 0.55s ease, transform 0.55s ease, filter 0.55s ease;
+        }
+
+        .scene.fade-out {
+            opacity: 0;
+            transform: translateY(-6px);
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        .scene.fade-in {
+            animation: sceneFadeIn 0.7s ease forwards;
+        }
+
+        @keyframes sceneFadeIn {
+            from { opacity: 0; transform: translateY(10px); filter: blur(2px); }
+            to   { opacity: 1; transform: translateY(0);    filter: blur(0);  }
+        }
+
+        .story-text {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 2.2rem;
+            white-space: pre-wrap;
+            color: #cfcfcf;
+            min-height: 200px;
+        }
+
+        .question-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #7a6e5e;
+            margin-bottom: 1rem;
+            border-left: 3px solid #4a3f34;
+            padding-left: 1rem;
+            opacity: 0;
+            animation: labelFade 0.5s ease 0.25s forwards;
+        }
+
+        @keyframes labelFade {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0);    }
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .choice-btn {
+            background: #1e1e26;
+            border: 1px solid #2e2e3a;
+            color: #d0d0d0;
+            padding: 1rem 1.4rem;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-family: 'Georgia', serif;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.25s ease, border-color 0.25s ease,
+                        color 0.25s ease, transform 0.25s ease,
+                        opacity 0.5s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(8px);
+            animation: choiceAppear 0.45s ease forwards;
+        }
+
+        .choice-btn:nth-child(1) { animation-delay: 0.30s; }
+        .choice-btn:nth-child(2) { animation-delay: 0.42s; }
+        .choice-btn:nth-child(3) { animation-delay: 0.54s; }
+        .choice-btn:nth-child(4) { animation-delay: 0.66s; }
+
+        @keyframes choiceAppear {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0);   }
+        }
+
+        .choice-btn:hover {
+            background: #2a2a34;
+            border-color: #5a4e3e;
+            color: #ffffff;
+            transform: translateX(6px);
+        }
+
+        .choice-btn .letter {
+            font-weight: bold;
+            color: #b8a080;
+            min-width: 1.6rem;
+            font-size: 1.1rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .choice-btn:active { transform: scale(0.98); }
+
+        .restart-btn {
+            background: transparent;
+            border: 1px solid #4a3f34;
+            color: #b8a080;
+            padding: 0.6rem 1.8rem;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-family: 'Georgia', serif;
+            cursor: pointer;
+            margin-top: 2rem;
+            transition: all 0.25s;
+            letter-spacing: 1px;
+            opacity: 0;
+            animation: labelFade 0.6s ease 0.6s forwards;
+        }
+
+        .restart-btn:hover {
+            background: #2a2a34;
+            border-color: #7a6e5e;
+            color: #e0d6c8;
+        }
+
+        .footer-hint {
+            margin-top: 1.5rem;
+            font-size: 0.75rem;
+            color: #4a4a5a;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .ending-mark {
+            color: #b8a080;
+            font-weight: bold;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: block;
+            opacity: 0;
+            animation: labelFade 0.8s ease 0.2s forwards;
+        }
+
+        .secret {
+            color: #b8a080;
+            border-left: 2px solid #5a4e3e;
+            padding-left: 1.2rem;
+            font-style: italic;
+        }
+
+        .leap-scene {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #8a7a6a;
+            font-style: italic;
+            letter-spacing: 1px;
+            font-size: 1rem;
+            opacity: 0;
+            animation: leapBreath 2s ease forwards;
+        }
+
+        @keyframes leapBreath {
+            0%   { opacity: 0;    transform: scale(0.98) translateY(8px); }
+            30%  { opacity: 1;    transform: scale(1) translateY(0);      }
+            75%  { opacity: 1;    transform: scale(1) translateY(0);      }
+            100% { opacity: 0.85; transform: scale(1) translateY(0);      }
+        }
+
+        .leap-scene .leap-mark {
+            display: block;
+            font-size: 1.6rem;
+            margin-bottom: 0.6rem;
+            opacity: 0.7;
+            color: #b8a080;
+        }
+
+        .riddle-block {
+            background: #1a1a22;
+            border: 1px solid #3a3a4a;
+            border-radius: 12px;
+            padding: 1.4rem 1.6rem;
+            margin: 1.5rem 0;
+            position: relative;
+            opacity: 0;
+            animation: sceneFadeIn 0.7s ease 0.3s forwards;
+        }
+
+        .riddle-block::before {
+            content: '🔍 ЗАГАДКА';
+            position: absolute;
+            top: -0.7rem;
+            left: 1.2rem;
+            background: #16161c;
+            padding: 0 0.6rem;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: #8a7a6a;
+        }
+
+        .riddle-result {
+            margin-top: 1rem;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0;
+            animation: sceneFadeIn 0.6s ease 0.15s forwards;
+        }
+
+        .riddle-correct {
+            background: #1a2a1a;
+            border-left: 3px solid #4a8a4a;
+            color: #b0d0b0;
+        }
+
+        .riddle-wrong {
+            background: #2a1a1a;
+            border-left: 3px solid #8a4a4a;
+            color: #d0b0b0;
+        }
+
+        .riddle-result .label {
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 0.4rem;
+        }
+
+        .riddle-correct .label { color: #6aaa6a; }
+        .riddle-wrong .label { color: #aa6a6a; }
+
+        .riddle-continue {
+            margin-top: 1.2rem;
+            text-align: center;
+            opacity: 0;
+            animation: sceneFadeIn 0.5s ease 0.4s forwards;
+        }
+
+        .riddle-continue .choice-btn {
+            display: inline-flex;
+            justify-content: center;
+            animation: none;
+            opacity: 1;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container" id="game">
+    <div class="title">Кукловод</div>
+    <div id="scene" class="scene">
+        <div class="story-text fade-in" id="story"></div>
+        <div class="question-label" id="questionLabel"></div>
+        <div class="choices" id="choices"></div>
+    </div>
+    <div style="text-align: center;">
+        <button class="restart-btn" id="restartBtn" style="display: none;">⟲ начать заново</button>
+    </div>
+    <div class="footer-hint">интерактивная история · ветвление внутри ветвления</div>
+</div>
+
+<script>
+    const state = {
+        currentNode: 'start',
+        riddleAnswered: {},
+        isTransitioning: false,
+    };
+
+    const nodes = {
+
+        // ============================================================
+        //  СТАРТ
+        // ============================================================
+        'start': {
+            text: `Николай поднял на него глаза.\n— Саш. Я, кажется, видел его.\n\nАлександр замер. Кофе в руке дрогнул.\n\n— Кого?\n\n— Кукловода.\n\nТишина.\n\nАлександр поставил стакан. Медленно. Посмотрел на Колю. В глазах его что-то мелькнуло, Николай не успел понять, что именно. Тревога? Страх? Или что-то другое?`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Пишет рапорт. Подробно. Всё, что видел. Отдаёт Александру на подпись.', next: 'branchA_1' },
+                { letter: 'Б', text: 'Не пишет рапорт. Закрывает тетрадь. Решает: сначала проверить самому.', next: 'branchB_1' },
+                { letter: 'В', text: 'Пишет рапорт, но не отдаёт. Кладёт в стол. Решает подождать.', next: 'branchV_1' },
+            ]
+        },
+
+        // ============================================================
+        //  ВЕТКА А
+        // ============================================================
+        'branchA_1': {
+            text: `Николай пишет. Долго. Подробно. Каждое слово — как по срезу. Александр читает. Медленно. Потом — подписывает. Кладёт в папку. Закрывает.\n\nМолчат оба.`,
+            question: 'Что делает Николай после того, как рапорт подписан?',
+            choices: [
+                { letter: 'А', text: 'Спрашивает: «Ты когда-нибудь чувствовал, что за тобой наблюдают?»', next: 'branchA_2' },
+                { letter: 'Б', text: 'Молчит. Смотрит на руки Александра. Спокойные. Ровные.', next: 'branchA_2' },
+                { letter: 'В', text: 'Говорит: «Саш. Я хочу проверить кое-что сам. Один».', next: 'branchA_2' },
+            ]
+        },
+        'branchA_2': {
+            text: `Они выходят из отдела. Улица пустая. Александр идёт рядом. Молча. До перекрёстка.\n\nНиколай останавливается.`,
+            question: 'Куда идёт Николай?',
+            choices: [
+                { letter: 'А', text: 'Домой. Один. По дороге проверяет: не едет ли кто за ним.', next: 'branchA_3' },
+                { letter: 'Б', text: 'Предлагает Александру зайти. Просто посидеть. Чай.', next: 'teaScene' },
+                { letter: 'В', text: 'Прощается. Но не идёт домой. Возвращается к Полевой.', next: 'branchA_3' },
+            ]
+        },
+
+        // ---------- ЧАЙНАЯ СЦЕНА ----------
+        'teaScene': {
+            text: `Николай говорит: «Зайдём? У меня чай есть». Александр кивает. Молча.\n\nКвартира Николая — тесная, но чистая. Кровать. Стол. Шкаф. Две чашки. Чайник щёлкает.\n\nОни сидят. Молчат. Чай горячий. Пар поднимается. Александр держит чашку обеими руками. Смотрит в неё. Николай смотрит на него. Долго.`,
+            question: 'Чай допит. Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Встаёт. Говорит: «Пойдём. Провожу». И провожает. До самого дома.', next: 'branchA_3' },
+                { letter: 'Б', text: 'Остаётся сидеть. Говорит: «Иди. Я позвоню». И остаётся. Один.', next: 'branchA_3' },
+                { letter: 'В', text: 'Встаёт. Прощается. Но не ложится. Идёт к Полевой.', next: 'branchA_3' },
+            ]
+        },
+
+        'branchA_3': {
+            text: `Николай у Полевой. Пусто. Фонари через один. Он стоит. Смотрит. Слушает.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Идёт дальше. Дворами. Туда, куда свернул мотоцикл.', next: 'leapA_1' },
+                { letter: 'Б', text: 'Возвращается домой. Пишет в тетради.', next: 'branchA_4' },
+                { letter: 'В', text: 'Звонит дежурному. Докладывает: подозрительный мотоцикл в районе Полевой.', next: 'branchA_4' },
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК А-1 ----------
+        'leapA_1': {
+            leap: true,
+            text: `Он идёт дальше. Дворами. Улица тянется. Фонари гаснут. Гаражи. Заборы. Тишина.\n\nИ вдруг — свет. Далеко. Мелькнул. Погас.\n\nОн идёт на свет. Один. Ночью.`,
+            question: 'Что он находит?',
+            choices: [
+                { letter: 'А', text: 'Ничего. Пусто. Только окурок. Свежий. Примят.', next: 'branchA_4' },
+                { letter: 'Б', text: 'След. Свежий. От мотоцикла. Ведёт к гаражам.', next: 'branchA_4' },
+                { letter: 'В', text: 'Тень. Кто-то ушёл. Быстро. Он не успел.', next: 'branchA_4' },
+            ]
+        },
+
+        'branchA_4': {
+            text: `Он опускается. Поднимает окурок. Смотрит. Свежий. Примят. Пахнет табаком.`,
+            question: 'Что он делает с окурком?',
+            choices: [
+                { letter: 'А', text: 'Кладёт в пакет. Утром — на экспертизу.', next: 'branchA_5' },
+                { letter: 'Б', text: 'Показывает Александру. Спрашивает: «Ты знаешь, чей это?»', next: 'branchA_5' },
+                { letter: 'В', text: 'Молчит. Прячет в карман. Ждёт.', next: 'branchA_5' },
+            ]
+        },
+
+        // ---------- ЗАГАДКА А-1 ----------
+        'branchA_5': {
+            text: `Николай в архиве. Он поднимает старые дела. Ищет совпадения.`,
+            riddle: {
+                intro: `Перед ним — три папки:\n\nДело №1: Мужчина, 42 года. Строитель. Закрыто. За неимением доказательств. Дата закрытия: 12 марта.\nДело №2: Женщина, 36 лет. Медсестра. Закрыто. За неимением доказательств. Дата закрытия: 12 марта.\nДело №3: Мужчина, 50 лет. Нотариус. Закрыто. За неимением доказательств. Дата закрытия: 12 марта.\n\nЧто общего у этих трёх дел?`,
+                options: [
+                    { letter: 'А', text: 'Все закрыты в один день.', correct: false },
+                    { letter: 'Б', text: 'Все подписаны одним следователем.', correct: false },
+                    { letter: 'В', text: 'И то, и другое. И третье: все фигуранты живы и не понесли наказания.', correct: true },
+                ],
+                explanation: `Верно. Все три дела закрыты в один день — 12 марта. Все подписаны одним следователем — Бенкендорф А.В. И все три фигуранта живы.`,
+                wrongExplanation: `Не совсем. Посмотри внимательнее: дата одна и та же — 12 марта. Следователь один и тот же — Бенкендорф. И все три фигуранта живы. Правильный ответ — третий.`,
+            },
+            next: 'branchA_6',
+        },
+        'branchA_6': {
+            text: `Николай видит: все три дела закрыты в один день. Один следователь. Одна подпись. Бенкендорф А.В.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Копирует списки. Едет домой. Пишет всё в тетрадь.', next: 'branchA_7' },
+                { letter: 'Б', text: 'Идёт к начальству. Прямо сейчас.', next: 'branchA_7' },
+                { letter: 'В', text: 'Едет к Александру. Домой. Без предупреждения.', next: 'leapA_2' },
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК А-2 ----------
+        'leapA_2': {
+            leap: true,
+            text: `Он едет к Александру. Домой. Без предупреждения.\n\nДверь. Тишина. Свет в окне. Он поднимается. Стоит. Слушает.\n\nЗа дверью — шаги. Медленные. Он стучит.`,
+            question: 'Что происходит?',
+            choices: [
+                { letter: 'А', text: 'Тишина. Он стоит. Ждёт. Потом уходит.', next: 'branchA_7' },
+                { letter: 'Б', text: 'Дверь открывается. Александр. Молчит.', next: 'branchA_7' },
+                { letter: 'В', text: 'Никто не открывает. Но он видит — в окне. Александр стоит. Спиной.', next: 'branchA_7' },
+            ]
+        },
+
+        'branchA_7': {
+            text: `Николай у дома Александра. Ночь. Окна горят.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Стоит. Смотрит. Ждёт. Потом уходит.', next: 'branchA_8' },
+                { letter: 'Б', text: 'Звонит в дверь. Без предупреждения.', next: 'branchA_8' },
+                { letter: 'В', text: 'Смотрит в окна. Видит: Александр стоит. Спиной. Что-то делает.', next: 'branchA_8' },
+            ]
+        },
+
+        // ---------- ГОЛОВОЛОМКА А-1 ----------
+        'branchA_8': {
+            text: `Николай смотрит в окно. Александр стоит спиной. В руках — что-то маленькое. Глиняное. Он ставит это на полку. Рядом с другими.\n\nНиколай видит полку. Фигурки. Восемь.\n\nСемь — стоят ровно. Восьмая — в центре. Под прозрачной коробкой.`,
+            riddle: {
+                intro: `Что это значит?`,
+                options: [
+                    { letter: 'А', text: 'Александр — коллекционер. Это просто хобби.', correct: false },
+                    { letter: 'Б', text: 'Семь фигурок — это семь жертв. Восьмая — новая.', correct: false },
+                    { letter: 'В', text: 'Восьмая фигурка — это Николай. И она под коробкой не просто так.', correct: true },
+                ],
+                explanation: `Верно. Восьмая фигурка — смешная, с большой головой — похожа на Николая. И она под прозрачной коробкой. Это значит: он — следующая цель. Или уже нет.`,
+                wrongExplanation: `Не совсем. Посмотри: семь фигурок — ровные, спокойные. Восьмая — в центре, под коробкой, смешная, с большой головой. Это Николай.`,
+            },
+            next: 'branchA_9',
+        },
+        'branchA_9': {
+            text: `Николай понимает: это фигурки. Глиняные. Похожие на людей. Одна — в центре. Под коробкой. Смешная. С большой головой. Похожая на него.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Стоит. Смотрит. Не двигается. Потом — уходит.', next: 'branchA_10' },
+                { letter: 'Б', text: 'Звонит в дверь. Прямо сейчас.', next: 'branchA_10' },
+                { letter: 'В', text: 'Достаёт телефон. Начинает снимать. Тихо.', next: 'leapA_3' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК А-3 ----------
+        'leapA_3': {
+            leap: true,
+            text: `Он достаёт телефон. Начинает снимать. Тихо.\n\nКадр. Ещё кадр. Фигурки. Полка. Карта. Флажки.\n\nИ вдруг — в кадре движение. Александр поворачивается. Медленно. Смотрит прямо в объектив.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Продолжает снимать. Не отводит телефон.', next: 'branchA_10' },
+                { letter: 'Б', text: 'Опускает телефон. Смотрит в глаза.', next: 'branchA_10' },
+                { letter: 'В', text: 'Убирает телефон. Уходит. Быстро.', next: 'branchA_10' },
+            ]
+        },
+
+        'branchA_10': {
+            text: `Александр оборачивается. Медленно. Спокойно. Смотрит в окно. Видит Колю.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Не двигается. Смотрит. Ждёт.', next: 'branchA_11' },
+                { letter: 'Б', text: 'Уходит. Быстро. Домой.', next: 'branchA_11' },
+                { letter: 'В', text: 'Говорит (через стекло): «Саш. Открой».', next: 'branchA_11' },
+            ]
+        },
+        'branchA_11': {
+            text: `Александр открывает дверь. Стоит. Смотрит. Глаза — светлые. Голубые. Не Сашины.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Саш. Это ты?»', next: 'branchA_12' },
+                { letter: 'Б', text: 'Молчит. Смотрит. Ждёт.', next: 'branchA_12' },
+                { letter: 'В', text: 'Делает шаг назад. К телефону.', next: 'branchA_12' },
+            ]
+        },
+        'branchA_12': {
+            text: `Александр (или тот, кто в нём) говорит: «Не кричи. Заходи».`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Заходит. Смотрит на полку. На фигурки.', next: 'branchA_13' },
+                { letter: 'Б', text: 'Остаётся на месте. Говорит: «Кто ты?»', next: 'branchA_13' },
+                { letter: 'В', text: 'Разворачивается. Уходит. Бегом.', next: 'branchA_13' },
+            ]
+        },
+
+        // ---------- ЗАГАДКА А-2 ----------
+        'branchA_13': {
+            text: `Николай в квартире. На полке — восемь фигурок.\n\nСемь — с искажёнными лицами. Скрюченные. Сломанные. Одна — в центре. Под коробкой. Целая. Чистая. Смешная.\n\nРядом с полкой — карта. Город. Флажки.\n\nКрасные — восемь. Жёлтые — три. Зелёные — пять.`,
+            riddle: {
+                intro: `Что означают цвета?`,
+                options: [
+                    { letter: 'А', text: 'Красные — закончено. Жёлтые — те, кого он ищет. Зелёные — те, кого он только присматривает.', correct: false },
+                    { letter: 'Б', text: 'Красные — опасно. Жёлтые — нейтрально. Зелёные — безопасно.', correct: false },
+                    { letter: 'В', text: 'Красные — убийства. Жёлтые — те, кто избежал наказания. Зелёные — те, кто ещё не сделал ничего плохого.', correct: true },
+                ],
+                explanation: `Верно. Красные — восемь — это те, кого он уже «казнил». Жёлтые — три — те, кто избежал наказания, но ещё не тронут. Зелёные — пять — те, кто пока чист.`,
+                wrongExplanation: `Не совсем. Красные — это не «опасно» и не «закончено». Это — убийства. Восемь. Жёлтые — те, кто избежал наказания. Зелёные — те, кто ещё не сделал ничего плохого.`,
+            },
+            next: 'branchA_14',
+        },
+        'branchA_14': {
+            text: `Николай видит карту. Флажки. Фотографии. Листы. Он понимает: это всё. Здесь всё.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Спрашивает: «Саш. Ты знаешь, что это?»', next: 'branchA_15' },
+                { letter: 'Б', text: 'Молчит. Смотрит. Запоминает.', next: 'branchA_15' },
+                { letter: 'В', text: 'Говорит: «Саш. Я знаю, что это ты. Я знаю, что ты — Кукловод».', next: 'leapA_4' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК А-4 ----------
+        'leapA_4': {
+            leap: true,
+            text: `— Саш. Я знаю, что это ты. Я знаю, что ты — Кукловод.\n\nСлово падает. Тихо. Но громко.\n\nАлександр не двигается. Смотрит. Долго. Потом — улыбается. Не Сашиной улыбкой.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Стоит. Ждёт. Смотрит.', next: 'branchA_15' },
+                { letter: 'Б', text: 'Делает шаг назад. К двери.', next: 'branchA_15' },
+                { letter: 'В', text: 'Говорит: «Я не боюсь тебя».', next: 'branchA_15' },
+            ]
+        },
+
+        'branchA_15': {
+            text: `Александр (или тот, кто в нём) смотрит на Колю. Долго. Потом — улыбается. Холодно. Остро.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Спрашивает: «Почему?»', next: 'branchA_16' },
+                { letter: 'Б', text: 'Говорит: «Я должен тебя задержать».', next: 'branchA_16' },
+                { letter: 'В', text: 'Молчит. Ждёт. Смотрит.', next: 'branchA_16' },
+            ]
+        },
+        'branchA_16': {
+            text: `Александр говорит: «Ты понимаешь, что я делаю?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Понимаю».', next: 'branchA_17' },
+                { letter: 'Б', text: '«Нет».', next: 'branchA_17' },
+                { letter: 'В', text: '«Я понимаю. Но это не значит, что я согласен».', next: 'branchA_17' },
+            ]
+        },
+        'branchA_17': {
+            text: `Александр говорит: «Ты сдашь меня?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Да».', next: 'branchA_18' },
+                { letter: 'Б', text: '«Не знаю».', next: 'branchA_18' },
+                { letter: 'В', text: '«Нет».', next: 'branchA_18' },
+            ]
+        },
+        'branchA_18': {
+            text: `Николай стоит. Смотрит на Сашу. На фигурки. На карту. На всё.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Уходит. Утром — к начальству. Докладывает.', next: 'final1' },
+                { letter: 'Б', text: 'Остаётся. Говорит: «Саш. Надо к врачу».', next: 'final2' },
+                { letter: 'В', text: 'Уходит. Молча. Но не к начальству. Домой. Думать.', next: 'final2' },
+            ]
+        },
+
+        // ============================================================
+        //  ВЕТКА Б
+        // ============================================================
+        'branchB_1': {
+            text: `Николай закрывает тетрадь. Убирает в ящик. Смотрит на Александра.\n\n— Не буду пока. Мало данных, — говорит он. — Проверю сам.\n\nАлександр смотрит на него. Долго. Потом кивает. Встаёт. Надевает куртку.\n\n— Пойдём. Провожу.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Идёт с ним. Молча.', next: 'branchB_2' },
+                { letter: 'Б', text: 'Говорит: «Не надо. Я сам».', next: 'branchB_2' },
+                { letter: 'В', text: 'Идёт. Но по дороге сворачивает. Проверяет: идёт ли Александр за ним.', next: 'leapB_1' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-1 ----------
+        'leapB_1': {
+            leap: true,
+            text: `Он идёт. Но по дороге сворачивает. Проверяет: идёт ли Александр за ним.\n\nУлица. Перекрёсток. Поворот. Он смотрит в стекло витрины.\n\nАлександр идёт. Ровно. На расстоянии. Не отстаёт.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Идёт дальше. Не оборачивается.', next: 'branchB_2' },
+                { letter: 'Б', text: 'Останавливается. Ждёт, пока Александр подойдёт.', next: 'branchB_2' },
+                { letter: 'В', text: 'Сворачивает в переулок. Уходит. Один.', next: 'branchB_2' },
+            ]
+        },
+
+        'branchB_2': {
+            text: `Николай дома. Ночь. Он один. Тетрадь на столе. Он не спит.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Открывает тетрадь. Пишет всё, что помнит.', next: 'branchB_3' },
+                { letter: 'Б', text: 'Едет к Полевой. Ночью. Один.', next: 'branchB_3' },
+                { letter: 'В', text: 'Звонит Александру. Просто поговорить.', next: 'leapB_2' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-2 ----------
+        'leapB_2': {
+            leap: true,
+            text: `Он звонит Александру. Просто поговорить.\n\nГудки. Долгие. Потом — щелчок.\n\n— Да?\n\nГолос — Сашин. Но не Сашин. Жёстче. Ниже.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Саш? Это ты?»', next: 'branchB_3' },
+                { letter: 'Б', text: 'Молчит. Слушает.', next: 'branchB_3' },
+                { letter: 'В', text: 'Сбрасывает. Перезванивает. Уже утром.', next: 'branchB_3' },
+            ]
+        },
+
+        'branchB_3': {
+            text: `Николай у Полевой. Пусто. Он стоит. Смотрит. Слушает.`,
+            question: 'Что он слышит?',
+            choices: [
+                { letter: 'А', text: 'Гул. Далеко. Мотоцикл.', next: 'branchB_4' },
+                { letter: 'Б', text: 'Тишину.', next: 'branchB_4' },
+                { letter: 'В', text: 'Шаги. За спиной.', next: 'leapB_3' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-3 ----------
+        'leapB_3': {
+            leap: true,
+            text: `Шаги. За спиной.\n\nНиколай не оборачивается. Стоит. Слушает.\n\nШаги ближе. Медленные. Ровные.\n\nПотом — останавливаются. Прямо за ним.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Оборачивается. Медленно.', next: 'branchB_4' },
+                { letter: 'Б', text: 'Стоит. Не двигается.', next: 'branchB_4' },
+                { letter: 'В', text: 'Делает шаг вперёд. Уходит.', next: 'branchB_4' },
+            ]
+        },
+
+        // ---------- ЗАГАДКА Б-1 ----------
+        'branchB_4': {
+            text: `Николай идёт по следу. Свежий след от мотоцикла. Ведёт дворами. К гаражам.\n\nОн доходит до гаража. Дверь приоткрыта.\n\nВнутри — темно. Пахнет глиной. И чем-то ещё. Чем-то тяжёлым.`,
+            riddle: {
+                intro: `Что делает Николай?`,
+                options: [
+                    { letter: 'А', text: 'Заходит. Внутрь.', correct: true },
+                    { letter: 'Б', text: 'Достаёт телефон. Звонит дежурному.', correct: false },
+                    { letter: 'В', text: 'Закрывает дверь. Уходит. Возвращается с подмогой.', correct: false },
+                ],
+                explanation: `Верно. Он заходит. Потому что должен увидеть сам. Потому что не может иначе.`,
+                wrongExplanation: `Не совсем. Он заходит. Внутрь. Один. Потому что должен увидеть сам.`,
+            },
+            next: 'branchB_5',
+        },
+        'branchB_5': {
+            text: `Николай внутри. Темно. Он включает фонарик на телефоне. Смотрит.\n\nВерстак. Инструменты. Спицы. Глина. И — статуя. Новая. Ещё тёплая.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Снимает. Фотографирует. Всё.', next: 'branchB_6' },
+                { letter: 'Б', text: 'Уходит. Быстро. Домой.', next: 'branchB_6' },
+                { letter: 'В', text: 'Ищет следы. Отпечатки. Что-то.', next: 'leapB_4' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-4 ----------
+        'leapB_4': {
+            leap: true,
+            text: `Он ищет следы. Отпечатки. Что-то.\n\nНа верстаке — глина. Ещё мягкая. Спицы. Проволока.\n\nИ вдруг — звук. За спиной. Дверь. Скрип.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Замирает. Не двигается.', next: 'branchB_6' },
+                { letter: 'Б', text: 'Оборачивается. Резко.', next: 'branchB_6' },
+                { letter: 'В', text: 'Хватает что-то. Любое. Для защиты.', next: 'branchB_6' },
+            ]
+        },
+
+        'branchB_6': {
+            text: `Николай находит на верстаке перчатку. Одну. Внутри — что-то. Он вытряхивает. Ключ. От квартиры. На брелке — буква «Б».`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Забирает ключ. Утром — на экспертизу.', next: 'branchB_7' },
+                { letter: 'Б', text: 'Оставляет. Не трогает. Уходит.', next: 'branchB_7' },
+                { letter: 'В', text: 'Фотографирует. Кладёт на место. Уходит.', next: 'leapB_5' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-5 ----------
+        'leapB_5': {
+            leap: true,
+            text: `Он фотографирует. Кладёт на место. Уходит.\n\nНо у выхода — останавливается. Смотрит на дверь.\n\nЗа дверью — тень. Кто-то стоит. Ждёт.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Открывает дверь. Резко.', next: 'branchB_7' },
+                { letter: 'Б', text: 'Отходит. Ищет другой выход.', next: 'branchB_7' },
+                { letter: 'В', text: 'Стоит. Ждёт. Пусть войдёт.', next: 'branchB_7' },
+            ]
+        },
+
+        // ---------- ГОЛОВОЛОМКА Б-2 ----------
+        'branchB_7': {
+            text: `Николай в мастерской. Он смотрит на статуи. Их семь. Семь фигур. Семь поз. Каждая — застывшая. Каждая — что-то значит.\n\nОн смотрит на первую: рука вытянута вперёд. Пальцы скрючены.\nВторая: рот открыт. Из него — что-то тёмное.\nТретья: скрюченная. Согнутая.\nЧетвёртая: руки в стороны. Будто распятая.\nПятая: голова опущена. Будто плачет.\nШестая: стоит прямо. Руки за спиной.\nСедьмая: сидит. Голова в коленях.`,
+            riddle: {
+                intro: `Что означает каждая фигура?`,
+                options: [
+                    { letter: 'А', text: 'Это жертвы. Каждая — в позе, которая отражает то, что они сделали.', correct: false },
+                    { letter: 'Б', text: 'Это жертвы. Каждая — в позе, которая отражает то, что с ними сделали.', correct: false },
+                    { letter: 'В', text: 'Это жертвы. Каждая — в позе, которая отражает то, кем они были при жизни.', correct: true },
+                ],
+                explanation: `Верно. Каждая поза — то, кем они были. Тот, кто держал людей в подвале — скрючен. Тот, кто кричал — с открытым ртом. Это не наказание. Это портрет.`,
+                wrongExplanation: `Не совсем. Позы — не то, что они сделали, и не то, что с ними сделали. Это то, кем они были. Их суть.`,
+            },
+            next: 'branchB_8',
+        },
+        'branchB_8': {
+            text: `Николай понимает: это жертвы. Каждая — в своей позе. Он смотрит. Долго.\n\nИ вдруг слышит: шаги. За спиной.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Оборачивается. Медленно.', next: 'branchB_9' },
+                { letter: 'Б', text: 'Прячется. За верстак.', next: 'branchB_9' },
+                { letter: 'В', text: 'Бежит. К выходу.', next: 'leapB_6' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК Б-6 ----------
+        'leapB_6': {
+            leap: true,
+            text: `Он бежит. К выходу.\n\nДверь. Рывок. Улица. Ночь. Холодный воздух.\n\nОн бежит. Не оборачивается. Слышит — за спиной. Тоже бег. Быстрее.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Бежит дальше. Не оборачивается.', next: 'branchB_9' },
+                { letter: 'Б', text: 'Резко сворачивает. Прячется.', next: 'branchB_9' },
+                { letter: 'В', text: 'Останавливается. Разворачивается. Лицом.', next: 'branchB_9' },
+            ]
+        },
+
+        'branchB_9': {
+            text: `Николай оборачивается. В дверях — фигура. Чёрный спортивный костюм. Шлем.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Стой. Полиция».', next: 'branchB_10' },
+                { letter: 'Б', text: 'Молчит. Смотрит. Ждёт.', next: 'branchB_10' },
+                { letter: 'В', text: 'Делает шаг назад. Ищет выход.', next: 'branchB_10' },
+            ]
+        },
+        'branchB_10': {
+            text: `Фигура стоит. Не двигается. Смотрит. Потом — поднимает руку. Медленно. Снимает шлем.\n\nЧто видит Николай?\n\n— Александра. Глаза светлые. Голубые.`,
+            riddle: {
+                intro: `Николай смотрит. Глаза — светлые. Голубые. Не Сашины. Но лицо — Сашино.\n\nФигура говорит: «Ты не должен был приходить сюда».\n\nГолос — Сашин. Но не Сашин. Жёстче. Ниже.\n\nЧто это значит?`,
+                options: [
+                    { letter: 'А', text: 'Александр — Кукловод. Он не знает об этом.', correct: true },
+                    { letter: 'Б', text: 'Александр — не Кукловод. Кто-то другой.', correct: false },
+                    { letter: 'В', text: 'Александр — Кукловод. И он знает об этом. Он врёт Николаю.', correct: false },
+                ],
+                explanation: `Верно. Александр — Кукловод. Но он не знает. Внутри него — кто-то. Кто-то, кого не было до операции.`,
+                wrongExplanation: `Не совсем. Александр — Кукловод. Но он не знает об этом. Внутри него — вторая личность.`,
+            },
+            next: 'branchB_11',
+        },
+        'branchB_11': {
+            text: `Николай понимает: это Александр. Но не Александр. Что-то другое. Внутри него.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Саш. Это ты?»', next: 'branchB_12' },
+                { letter: 'Б', text: 'Говорит: «Кто ты?»', next: 'branchB_12' },
+                { letter: 'В', text: 'Молчит. Смотрит. Ждёт.', next: 'branchB_12' },
+            ]
+        },
+        'branchB_12': {
+            text: `Фигура говорит: «Я — то, что должно было быть. Я — суд».`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Ты — убийца».', next: 'branchB_13' },
+                { letter: 'Б', text: '«Ты — не суд».', next: 'branchB_13' },
+                { letter: 'В', text: '«Почему?»', next: 'branchB_13' },
+            ]
+        },
+        'branchB_13': {
+            text: `Фигура говорит: «Ты понимаешь, что я делаю?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Понимаю».', next: 'branchB_14' },
+                { letter: 'Б', text: '«Нет».', next: 'branchB_14' },
+                { letter: 'В', text: '«Я понимаю. Но это не значит, что я согласен».', next: 'branchB_14' },
+            ]
+        },
+        'branchB_14': {
+            text: `Фигура говорит: «Ты сдашь меня?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Да».', next: 'branchB_15' },
+                { letter: 'Б', text: '«Не знаю».', next: 'branchB_15' },
+                { letter: 'В', text: '«Нет».', next: 'branchB_15' },
+            ]
+        },
+        'branchB_15': {
+            text: `Фигура смотрит на него. Долго. Потом — улыбается. Холодно. Остро. И — надевает шлем. Уходит.\n\nНиколай стоит. Один. В мастерской. Среди статуй.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Уходит. Утром — к начальству. Докладывает.', next: 'final1' },
+                { letter: 'Б', text: 'Остаётся. Смотрит. Запоминает. Потом уходит.', next: 'final2' },
+                { letter: 'В', text: 'Идёт за ним. Тихо. Смотрит, куда тот пойдёт.', next: 'final2' },
+            ]
+        },
+
+        // ============================================================
+        //  ВЕТКА В
+        // ============================================================
+        'branchV_1': {
+            text: `Николай пишет. Долго. Потом — кладёт в ящик. Не отдаёт.\n\n— Пока не буду отправлять. Мало данных, — говорит он.\n\nАлександр смотрит. Не спрашивает. Только смотрит. Иногда.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Работает. Как всегда. Но копает. Тихо. Ночью.', next: 'branchV_2' },
+                { letter: 'Б', text: 'Следит за Александром. Тихо. Днём. Ночью.', next: 'leapV_1' },
+                { letter: 'В', text: 'Едет в архив. Ищет дела, связанные с Бенкендорфом.', next: 'branchV_2' },
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-1 ----------
+        'leapV_1': {
+            leap: true,
+            text: `Он следит за Александром. Тихо. Днём. Ночью.\n\nКофейня. Работа. Дом. Он везде. На расстоянии. Смотрит.\n\nИ однажды — видит. Александр заходит не домой. В другой дом. Пустой. Свет не горит.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Идёт следом. В дом.', next: 'branchV_2' },
+                { letter: 'Б', text: 'Ждёт. Смотрит. Что будет дальше.', next: 'branchV_2' },
+                { letter: 'В', text: 'Уходит. Не сегодня. Завтра.', next: 'branchV_2' },
+            ]
+        },
+
+        'branchV_2': {
+            text: `Николай в архиве. Он поднимает старые дела. Ищет. Сравнивает.\n\nОн находит три дела. Все закрыты в один день. Один следователь. Бенкендорф.\n\nОн смотрит на дату. 12 марта. Шесть лет назад.\n\nОн смотрит на другие дела. Тоже 12 марта. Пять лет назад. Четыре. Три. Два. Год назад.\n\nКаждый год. 12 марта. Одно и то же.`,
+            riddle: {
+                intro: `Что это значит?`,
+                options: [
+                    { letter: 'А', text: 'Совпадение.', correct: false },
+                    { letter: 'Б', text: 'Кто-то специально закрывает дела в этот день.', correct: false },
+                    { letter: 'В', text: 'Это дата. Что-то произошло в этот день. Что-то важное.', correct: true },
+                ],
+                explanation: `Верно. 12 марта — не совпадение. Это дата. Что-то произошло. Что-то, что стало точкой отсчёта.`,
+                wrongExplanation: `Не совсем. Это не совпадение и не чей-то каприз. Это дата. Что-то произошло 12 марта. Что-то важное.`,
+            },
+            next: 'branchV_3',
+        },
+        'branchV_3': {
+            text: `Николай понимает: 12 марта — не совпадение. Это дата. Что-то произошло.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Ищет: что произошло 12 марта. В архиве. В сводках. Везде.', next: 'branchV_4' },
+                { letter: 'Б', text: 'Едет к Александру. Спрашивает: «Саш. Что было 12 марта?»', next: 'leapV_2' },
+                { letter: 'В', text: 'Едет в клинику. Спрашивает про операции на позвоночнике. Год. Шесть лет назад.', next: 'branchV_4' },
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-2 ----------
+        'leapV_2': {
+            leap: true,
+            text: `Он едет к Александру. Спрашивает: «Саш. Что было 12 марта?»\n\nАлександр молчит. Долго. Потом — смотрит.\n\nГлаза — тёмные. Карие. Сашины. Но в них — что-то. Что-то, чего раньше не было.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Ждёт. Не давит.', next: 'branchV_4' },
+                { letter: 'Б', text: 'Говорит: «Саш. Я знаю. Просто скажи».', next: 'branchV_4' },
+                { letter: 'В', text: 'Молчит. Смотрит. Пусть сам скажет.', next: 'branchV_4' },
+            ]
+        },
+
+        'branchV_4': {
+            text: `Николай в клинике. Он смотрит список операций. Шесть лет назад. 12 марта. Пациент: Бенкендорф А.В.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Копирует. Уходит. Едет домой. Пишет в тетрадь.', next: 'branchV_5' },
+                { letter: 'Б', text: 'Идёт к врачу. Спрашивает: «Что произошло?»', next: 'branchV_5' },
+                { letter: 'В', text: 'Уходит. Молча. Едет к Александру.', next: 'leapV_3' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-3 ----------
+        'leapV_3': {
+            leap: true,
+            text: `Он уходит. Молча. Едет к Александру.\n\nДверь. Стук. Тишина.\n\nОн стучит снова. Громче.\n\nДверь открывается. Александр. Молчит. Смотрит.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Я знаю про операцию».', next: 'branchV_5' },
+                { letter: 'Б', text: 'Молчит. Смотрит. Входит.', next: 'branchV_5' },
+                { letter: 'В', text: 'Говорит: «Саш. Нам надо поговорить».', next: 'branchV_5' },
+            ]
+        },
+
+        // ---------- ГОЛОВОЛОМКА В-2 ----------
+        'branchV_5': {
+            text: `Николай находит врача. Тот смотрит на него. Долго. Потом — говорит:\n\n«Я помню этот случай. Ошибка. Или не ошибка. Я не знаю. Но что-то пошло не так. Что-то... осталось».\n\n«Что осталось?»\n\n«Я не знаю. Я не могу объяснить. Но он... не один. Внутри него. Кто-то есть. Кто-то, кого не было до операции».`,
+            riddle: {
+                intro: `Что это значит?`,
+                options: [
+                    { letter: 'А', text: 'Врач сумасшедший.', correct: false },
+                    { letter: 'Б', text: 'Александр — не один. Внутри него — кто-то. Вторая личность.', correct: true },
+                    { letter: 'В', text: 'Врач что-то скрывает.', correct: false },
+                ],
+                explanation: `Верно. Внутри Александра — кто-то. Кто-то, кого не было до операции. Кто-то, кто появился 12 марта. Шесть лет назад.`,
+                wrongExplanation: `Не совсем. Врач не сумасшедший и не скрывает. Он говорит правду. Александр — не один. Внутри него — вторая личность.`,
+            },
+            next: 'branchV_6',
+        },
+        'branchV_6': {
+            text: `Николай понимает: внутри Александра — кто-то. Кто-то, кого не было до операции. Кто-то, кто появился 12 марта. Шесть лет назад.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Едет к Александру. Прямо сейчас. Говорит: «Саш. Надо поговорить».', next: 'branchV_7' },
+                { letter: 'Б', text: 'Едет домой. Пишет всё в тетрадь. Думает.', next: 'branchV_7' },
+                { letter: 'В', text: 'Едет к начальству. Докладывает: есть подозрение. Александр — не один.', next: 'leapV_4' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-4 ----------
+        'leapV_4': {
+            leap: true,
+            text: `Он едет к начальству. Докладывает: есть подозрение. Александр — не один.\n\nНачальник слушает. Молча. Потом — смотрит на него.\n\n— Николай. Ты понимаешь, что говоришь?\n\nНиколай молчит.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Понимаю. Я проверял».', next: 'branchV_7' },
+                { letter: 'Б', text: 'Забирает слова обратно.', next: 'branchV_7' },
+                { letter: 'В', text: 'Уходит. Молча. Без доклада.', next: 'branchV_7' },
+            ]
+        },
+
+        'branchV_7': {
+            text: `Николай у Александра. Ночь. Он звонит в дверь.\n\nКто открывает?\n\n— Александр. Глаза тёмные. Карие. Сашины.\n\nАлександр открывает. Смотрит. Молчит.`,
+            question: 'Что говорит Николай?',
+            choices: [
+                { letter: 'А', text: '«Саш. Я знаю. Про 12 марта. Про операцию. Про всё».', next: 'branchV_8' },
+                { letter: 'Б', text: '«Саш. Надо поговорить. Пожалуйста».', next: 'branchV_8' },
+                { letter: 'В', text: '«Саш. Ты знаешь, кто такой Кукловод?»', next: 'leapV_5' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-5 ----------
+        'leapV_5': {
+            leap: true,
+            text: `— Саш. Ты знаешь, кто такой Кукловод?\n\nАлександр смотрит. Долго. Потом — отходит. В сторону. Пропускает.\n\n— Заходи, — говорит. Тихо. — Сам увидишь.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Заходит. Смотрит.', next: 'branchV_8' },
+                { letter: 'Б', text: 'Остаётся на пороге. Ждёт.', next: 'branchV_8' },
+                { letter: 'В', text: 'Говорит: «Нет. Скажи здесь».', next: 'branchV_8' },
+            ]
+        },
+
+        // ---------- ЗАГАДКА В-3 ----------
+        'branchV_8': {
+            text: `Александр смотрит на него. Долго. Потом — говорит:\n\n«Коль. Я не знаю, о чём ты. Я не помню. Ничего. Я никогда не помню, что было ночью. Я всегда уставал. Всегда. Думал, работа. Стресс. Возраст. Но...»\n\nОн замолкает.\n\n«Но что?»\n\n«Но иногда... я нахожу вещи. Которых не помню. Глину. Под ногтями. Ссадины. Синяки. Я не знаю, откуда они».`,
+            riddle: {
+                intro: `Что это значит?`,
+                options: [
+                    { letter: 'А', text: 'Александр врёт.', correct: false },
+                    { letter: 'Б', text: 'Александр не врёт. Он не знает. Он действительно не помнит.', correct: true },
+                    { letter: 'В', text: 'Александр знает. Но боится сказать.', correct: false },
+                ],
+                explanation: `Верно. Александр не врёт. Он не знает. Он действительно не помнит. Внутри него — кто-то. Кто-то, кто делает это. А Саша — просто живёт. И не знает.`,
+                wrongExplanation: `Не совсем. Александр не врёт и не боится. Он действительно не помнит. Он не знает о второй личности.`,
+            },
+            next: 'branchV_9',
+        },
+        'branchV_9': {
+            text: `Николай понимает: Александр не знает. Он действительно не помнит. Внутри него — кто-то. Кто-то, кто делает это. А Саша — просто живёт. И не знает.`,
+            question: 'Что говорит Николай?',
+            choices: [
+                { letter: 'А', text: '«Саш. Внутри тебя — кто-то. Вторая личность. Это он. Он — Кукловод».', next: 'branchV_10' },
+                { letter: 'Б', text: '«Саш. Надо к врачу. К психологу. Хорошему. Который не сдаст».', next: 'branchV_10' },
+                { letter: 'В', text: '«Саш. Я не знаю, что делать. Но я с тобой. Что бы это ни было».', next: 'leapV_6' }
+            ]
+        },
+
+        // ---------- ПЕРЕСКОК В-6 ----------
+        'leapV_6': {
+            leap: true,
+            text: `— Саш. Я не знаю, что делать. Но я с тобой. Что бы это ни было.\n\nАлександр смотрит. Долго. Потом — глаза меняются. Светлеют.\n\nГолубые. Не Сашины.\n\n— Ты уверен? — спрашивает голос. Жёстче. Ниже.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Уверен».', next: 'branchV_10' },
+                { letter: 'Б', text: 'Молчит. Смотрит. Не отводит глаз.', next: 'branchV_10' },
+                { letter: 'В', text: 'Отступает. На шаг.', next: 'branchV_10' },
+            ]
+        },
+
+        'branchV_10': {
+            text: `Александр смотрит на него. Долго. В глазах — растерянность. Как у человека, который только что узнал, что его жизнь — не его.\n\n— Что мне делать? — спрашивает он. Тихо. Беспомощно.`,
+            question: 'Что делает Николай?',
+            choices: [
+                { letter: 'А', text: 'Говорит: «Саш. Это ты?»', next: 'branchV_11' },
+                { letter: 'Б', text: 'Говорит: «Кто ты?»', next: 'branchV_11' },
+                { letter: 'В', text: 'Молчит. Смотрит. Ждёт.', next: 'branchV_11' },
+            ]
+        },
+        'branchV_11': {
+            text: `Александр (или тот, кто в нём) смотрит на Колю. Глаза — светлые. Голубые.\n\nФигура говорит: «Я — то, что должно было быть. Я — суд».`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Ты — убийца».', next: 'branchV_12' },
+                { letter: 'Б', text: '«Ты — не суд».', next: 'branchV_12' },
+                { letter: 'В', text: '«Почему?»', next: 'branchV_12' },
+            ]
+        },
+        'branchV_12': {
+            text: `Фигура говорит: «Ты понимаешь, что я делаю?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Понимаю».', next: 'branchV_13' },
+                { letter: 'Б', text: '«Нет».', next: 'branchV_13' },
+                { letter: 'В', text: '«Я понимаю. Но это не значит, что я согласен».', next: 'branchV_13' },
+            ]
+        },
+        'branchV_13': {
+            text: `Фигура говорит: «Ты сдашь меня?»`,
+            question: 'Что отвечает Николай?',
+            choices: [
+                { letter: 'А', text: '«Да».', next: 'branchV_14' },
+                { letter: 'Б', text: '«Не знаю».', next: 'branchV_14' },
+                { letter: 'В', text: '«Нет».', next: 'branchV_14' },
+            ]
+        },
+        'branchV_14': {
+            text: `Николай стоит. Смотрит на Сашу. На фигурки. На карту. На всё.`,
+            question: 'Что он делает?',
+            choices: [
+                { letter: 'А', text: 'Уходит. Утром — к начальству. Докладывает.', next: 'final1' },
+                { letter: 'Б', text: 'Остаётся. Говорит: «Саш. Надо к врачу».', next: 'final2' },
+                { letter: 'В', text: 'Уходит. Молча. Но не к начальству. Домой. Думать.', next: 'final2' },
+            ]
+        },
+
+        // ============================================================
+        //  ФИНАЛ 1
+        // ============================================================
+        'final1': {
+            ending: true,
+            text: `Николай находит доказательства.\n\nСписок. Совпадения. Его тетрадь. Фотографии.\n\nВсё.\n\nОн идёт к начальству.\n\nПроверка. Обыск. Экспертиза.\n\nАлександра задерживают прямо в кабинете. Он сперва не понимает, что происходит. Пытается что-то выяснить. Смотрит на Николая. Но... не видит ничего, приходит осознание. Глаза будто мутнеют.\n\nНиколай ждёт. Что Александр скажет что-то. Объяснит. Улыбнётся — как всегда. Будто всё это — недоразумение.\n\nНо Александр молчит.\n\nОн теперь смотрит на Колю так, будто видит его впервые. Будто всё, что было — чай, куртка, «пойдём, провожу», «ты поел?» — было ложью. Или не было вовсе.\n\nНиколай хочет сказать что-то. Но не может.\n\nАлександр отворачивается.\n\nЕго уводят.\n\nОн не оборачивается.\n\n---\n\nДопросная. Серые стены. Стол. Два стула.\n\nАлександр пристёгнут руками к столу.\n\nПсихолог.\n\nАлександр сидит напротив. Смотрит в стол. Не двигается.\n\n— Александр. Расскажите, что Вы помните.\n\nМолчание.\n\n— Александр.\n\n— Ничего.\n\n— Совсем ничего?\n\n— Я помню, как пришёл на работу. Помню Колю. Помню дело. Потом... — он замолкает. — Потом темнота.\n\n— Что значит — темнота?\n\n— Я не знаю. Я не помню, что было ночью. Я всегда не помню, что было ночью. У меня никогда не бывало снов...\n\nПсихолог записывает.\n\n— Вы когда-нибудь чувствовали, что с вами что-то не так? Что вы делаете что-то, чего не помните?\n\nАлександр поднимает глаза. В них усталость. Что, психолог на секунду отводит взгляд.\n\n— Я всегда уставал. Всегда. Думал, работа. Стресс. Возраст.\n\n— А сейчас?\n\n— Сейчас... пусто.\n\nОн говорит тихо. Без эмоций.\n\nПсихолог смотрит на него. Перед ней — человек, которого сломали. Изнутри. Морально. Будто из него вытащили что-то важное. Что-то, что делало его живым.\n\n— Александр. Вы помните, как познакомились с Николаем?\n\nПауза.\n\n— Помню.\n\n— Что вы чувствовали?\n\nАлександр молчит. Долго. Потом:\n\n— Ничего. Он был... мальчишка. Зелёный. Я должен был его натаскать.\n\n— И всё?\n\n— И всё.\n\nОн не говорит про чай. Не говорит про куртку. Не говорит про «ты поел?». Не говорит про взгляды. Про тепло. Про то, как оставался с ним допоздна. Про то, как провожал.\n\nОн менял темы, когда речь заходила об Коле.\n\nАлександр сидит напротив. Молчит.\n\nПсихолог задаёт вопросы. Он отвечает. Односложно. Механически.\n\nИ вдруг...\n\nАлександр моргает. Медленно. Его глаза... меняются. Цвет. Были тёмные, карие. Стали светлые.\n\nОн поднимает голову. Смотрит на психолога. Прямо. Впервые за сеанс — прямо.\n\nИ улыбается.\n\nНе так, как раньше Александр. По-другому. Холодно. Остро.\n\n— Здравствуйте, — говорит он. Голос другой. Жёстче. Ниже. — Наконец-то.\n\nПсихолог замирает. Ручка в руке дрожит.\n\n— Кто вы?\n\n— Вы знаете, кто я.\n\n— Кукловод.\n\n— Именно.\n\nОн откидывается на стуле. Смотрит на неё. Изучающе. Будто она — экспонат.\n\n— Значит, вот как. Посадили. Меня. Всё-таки поймали.\n\n— Александра.\n\n— Александра, — соглашается он. — Александр. Хороший человек. Слишком мягкий. Слишком усталый. Почему его вообще за скалу принимают.\n\n— Почему вы появились?\n\nОн наклоняется вперёд.\n\n— Вы знаете, сколько отпустил? Не потому что не смог доказать. Потому что система — гнилая. Потому что судьи — купленные. Всё куплено. Потому что «недостаточно доказательств».\n\nПсихолог молчит. Слушает.\n\n— Я делаю то, что не делает полиция. Делал, — говорит Кукловод. — Я — суд. Тот самый суд, который должен был быть. Но его нет. Потому что те, кто мучает людей, кто держит их в подвалах, кто забирает паспорта, кто насилует, кто грабит — они гуляют. Они спят спокойно. Они едят. Они смеются. А те, кого они сломали — молчат. Потому что боятся. Потому что им никто не верит. Потому что система их предала. Потому, что у них нет таких СРЕДСТВ И СВЯЗЕЙ!\n\nОн смотрит на неё. Глаза светлые. Холодные.\n\n— Я занимался судом против этих тварей. Тех, кто мучает людей. Тех, кому ничего не делают. Я — то, что должно было быть. Но не стало. Потому что, видите ли. КОГДА ИДЁТ ОТВЕТКА, ЧТО-ТО НЕ НРАВИТСЯ!\n\nПсихолог смотрит на него. Пытаясь держаться.\n\n— Вы убивали людей.\n\n— Я наказывал.\n\n— Вы убивали.\n\n— Я казнил. Тех, кто заслужил. Тех, кого не тронула система.\n\nПсихолог сжимает ручку.\n\n— Вы понимаете, что это неправильно?\n\n— Я понимаю, что это работает.\n\nПауза.\n\n— Вы знаете, откуда вы появились?\n\nКукловод смотрит на неё. Внимательно, прищурившись.\n\n— Знаю.\n\n— Откуда?\n\n— Во время операции. Александру делали операцию на позвоночнике. Ошибка. Или не ошибка.\n\n— Что вы имеете в виду?\n\n— Я имею в виду, что я появился не сам. Меня создали. Врач. Он сделал что-то. Что-то пошло не так. Я — результат.\n\nПсихолог записывал.\n\n— Вы знаете, кто этот врач?\n\n— Знаю.\n\n— Имя?\n\nКукловод усмехается.\n\n— Зачем вам?\n\n— Чтобы понять.\n\n— Чтобы понять — что?\n\n— Чтобы понять, как Вас лечить.\n\nКукловод смотрит на неё. Долго.\n\n— Вы не можете меня лечить. Я — не болезнь. Я — результат халатности.\n\n— Вы меня хотите убить?\n\nПауза.\n\n— Зачем, Вы не они, — говорит он. — Вы — другая. Вы слушаете. Они — нет. Вы пытаетесь понять. Они — нет. Вы не брали взяток. Не покрывали. Не убивали. Не грабили. Не насиловали.\n\nОн откидывается обратно.\n\n— Я не убиваю невиновных. Никогда.\n\nПсихолог медленно опускает ручку. Смотрит на него.\n\n— Значит, Вы... безопасны?\n\n— Я не опасен для тех, кто не сделал ничего плохого. Я опасен для тех, кто сделал. И остался безнаказанным. Делал.\n\nПсихолог молчит. Потом:\n\n— Александр. Вы слышите меня?\n\nКукловод моргает. Глаза светлеют ещё больше. Потом — тускнеют. Возвращаются к тёмному. Карему.\n\n— Я не знаю, что говорить. — сказал он. Голос был ровный. Пустой.\n\nДевушка кивнула, будто ждала именно этого.\n\n— Тогда я скажу. Александр, ты знаешь, что у тебя диагностировано диссоциативное расстройство идентичности?\n\nОн моргнул.\n\n— Что?\n\n— Вторая личность, — сказала она спокойно. — Тот, кого ты называешь... Кукловод.\n\nАлександр замер. Внутри что-то сжалось.\n\n— Нет, — сказал он. — Нет, это не... Это не я...\n\n— Он — часть тебя, Александр. Ты не знал. Ты не мог знать. Ты защищался от того, что произошло с тобой, и эта защита приняла форму... его.\n\n---\n\nПсихолог пишет заключение.\n\nДолго. Подробно.\n\nДиссоциативное расстройство идентичности. Вторая личность — «Кукловод» — сформировалась на фоне хирургической травмы и последующего стресса. Убийства совершены в состоянии диссоциации, вне контроля основной личности. Александр Бенкендорф не осознаёт своих действий в момент их совершения. Вменяемость — ограничена. Рекомендовано: принудительное лечение в специализированном учреждении закрытого типа.\n\nОна подписывает. Отдаёт.\n\nАлександра переводят. В клинику. На лечение.\n\n---\n\nНиколай приходит через неделю.\n\nЕго пускают. Палата. Кровать. Стол. Окно с решёткой. Александр сидит у окна. Смотрит в небо.\n\nОн оборачивается. Видит Колю.\n\nИ — ничего. Просто смотрит.\n\n— Пришёл — говорит Александр. Ровно.\n\n— Пришёл.\n\n— Зачем?\n\nНиколай замирает.\n\n— Проведать.\n\n— Ясно.\n\nАлександр отворачивается. Снова смотрит в окно.\n\nНиколай стоит. Не знает, что сказать.\n\n— Саш...\n\n— Не надо.\n\n— Что не надо?\n\n— Ничего. Не надо. Я всё понял.\n\n— Что ты понял?\n\nАлександр молчит. Потом:\n\n— Ты всё знал. Ты просто ждал. Ты сдал меня. Ты сделал то, что должен был. Я не виню.\n\n— Саш. Я не знал. Я...\n\n— Не ври.\n\nНиколай замолкает.\n\nАлександр смотрит на него. Впервые прямо.\n\n— Ты видел. Ночью. Мотоцикл. Ты понял. Ты пошёл к начальству. Ты всё сделал правильно. Я не виню.\n\n— Я не хотел...\n\n— Хотел. Ты хотел поймать. Ты поймал. Всё.\n\nНиколай выходит. В коридоре — стена. Он прислоняется к ней. Закрывает глаза.\n\nОн не плачет. Просто стоит.\n\nДа?...\n\n— Буду приходить — сказал Коля. — Каждый день.\n\n---\n\nОн приходит каждую неделю.\n\nМолчит. Сидит. Иногда говорит. О деле. О работе. О погоде. О чём угодно.\n\nАлександр слушает. Иногда отвечает. Чаще — нет.\n\nНиколай не сдаётся.\n\nОн приносит чай. В термокружке. Ставит на стол. Александр не пьёт. Потом — пьёт. Через раз. Потом — всегда.\n\nОн приносит бутерброды. Из столовой. Те самые. Александр смотрит на них. Долго. Потом берёт.\n\nОн приносит куртку. Ту самую. Свою. Потому что в палате холодно. Александр надевает. Молча.\n\nНиколай замечает: глаза у Саши стали другие. Светлее. Будто кто-то внутри смотрит. Иногда — мелькает что-то. Острое. Холодное. Потом — гаснет.\n\nОн не говорит об этом. Просто приходит.\n\n---\n\nПсихолог работала с обоими. С Сашей — над тем, чтобы он принял свою вторую личность, но не растворялся в ней. С Кукловодом — над тем, чтобы он видел границы. Чтобы понимал: мир не делится на «чистых» и «грязных», и он не судья.\n\nЭто было трудно. Кукловод сопротивлялся. Саша тоже. Иногда они оба молчали.\n\nНо постепенно Саша начал возвращаться.\n\nСначала улыбка. Слабая. Неуверенная. Когда Коля принёс ему апельсин.\n\nАлександр смеётся. Впервые. Над чем-то глупым. Над тем, как Николай пролил чай. Как всегда.\n\nНиколай смотрит на него. И видит: глаза тёмные. Карие. Сашины. Живые.\n\n— Что? — спрашивает Александр.\n\n— Ничего. Просто... ты смеёшься.\n\n— И что?\n\n— Хорошо.\n\nАлександр смотрит на него. Потом улыбается как раньше.\n\n— Ты поел?\n\nНиколай смеётся.\n\n— Ты вернулся.\n\n— Куда?\n\n— К себе.\n\nАлександр не понимает. Но не спрашивает. Просто смотрит на Колю.\n\nПотом — интерес. Саша начал спрашивать. О городе. О том, что происходит снаружи.\n\nПсихолог перевела его на первый уровень через полгода.\n\nПервый уровень. Ремиссия. Наблюдение. Но — свобода.\n\nЭто была палата с окном, которое открывалось. С прогулками по территории. С возможностью выходить в сад.\n\nКоля пришёл в первый же день.\n\n— Почему? — спросил Саша.\n\nНиколай молчит. Потом:\n\n— Потому что ты — не он. Ты — Саша. Ты — тот, кто приносил мне чай. Кто привёз куртку. Кто провожал. Кто...\n\n— Что?\n\n— Кто мне нравится.\n\nАлександр замирает.\n\n— Правда?\n\n— Правда.\n\nАлександр смотрит на него. Долго. Потом — улыбается. Впервые. По-настоящему. Тепло. Живо.\n\nКОНЕЦ`,
+            choices: null,
+        },
+
+        // ============================================================
+        //  ФИНАЛ 2
+        // ============================================================
+        'final2': {
+            ending: true,
+            text: `Николай не находит доказательств.\n\nОн не уверен. Потому что между строк, между дел, между ночами, что-то не складывается. Что-то, что он не может назвать словом.\n\nОни сближаются.\n\nМедленно, как это всегда бывает. Через чай, который Александр приносит без просьбы. Через куртку, которую Николай не снимает до конца смены. Через молчание в машине, которое перестаёт быть неловким.\n\nАлександр замечает: Коля не спит.\n\nСначала — просто поздно ложится. Потом — вообще перестаёт. Глаза красные. Руки дрожат. Кофе литрами. Тетрадь — исписана до последней страницы. Карты. Списки. Версии. Одни и те же вопросы по кругу.\n\n— Коль. Ты выглядишь паршиво.\n\n— Нормально.\n\n— Нет. Не нормально.\n\n— Саш, я должен найти.\n\n— Ты должен спать.\n\n— Не могу.\n\nАлександр смотрит на него. Потом — молча встаёт. Собирает его вещи. Берёт куртку. Ключи.\n\n— Пойдём.\n\n— Куда?\n\n— Ко мне.\n\nНиколай не спорит. Просто идёт за ним. Потому что сил спорить нет. Потому что ноги сами несут. Потому что где-то внутри — тихое, глупое — он рад.\n\n---\n\nКвартира Александра — небольшая, чистая. Кровать. Стол. Шкаф. Ничего лишнего.\n\nНиколай падает на диван. Засыпает раньше, чем голова касается подушки.\n\nАлександр стоит над ним, вздыхает.\n\nПотом уходит в другую комнату. Закрывает дверь.\n\n---\n\nПервая ночь — спокойная.\n\nВторая — тоже.\n\nНиколай спит. Ест. Работает. Но всё равно копает. Тихо. Ночью. В тетради, которая теперь лежит под подушкой.\n\nАлександр замечает. Каждый раз. Но молчит.\n\n---\n\nТретья ночь.\n\nНиколай просыпается от жажды.\n\nВ квартире темно. Тихо.\n\nОн встаёт. Идёт на кухню. Пьёт воду. Смотрит в окно.\n\nИ слышит.\n\nШорох. Мягкий. Будто кто-то идёт. Осторожно.\n\nНиколай замирает.\n\nЗвук идёт из дальней комнаты. Где дверь всегда закрыта.\n\nНиколай подходит. Медленно. Шаг. Ещё шаг.\n\nДверь приоткрыта. Чуть-чуть. Полоска света. Жёлтого.\n\nНиколай заглядывает.\n\nАлександр стоит спиной. В руках — что-то маленькое. Глиняное. Он ставит это на полку. Рядом с другими.\n\nНиколай видит полку. Фигурки. Много.\n\nИ одна — в центре. Под прозрачной коробкой. Маленькая. С большой головой. Смешная.\n\nПохожая на него.\n\nОн хочет крикнуть. Слово уже на языке: «Арестован». Рука тянется к телефону. Но что-то останавливает.\n\nАлександр оборачивается.\n\nМедленно. Спокойно.\n\nНиколай ждёт: сейчас будет что-то. Рывок. Удар. Что угодно.\n\nНичего.\n\nАлександр просто смотрит. Стоит. Не двигается.\n\n— Не кричи, — говорит он тихо.\n\nНиколай замирает.\n\nОн смотрит на Сашу. И видит: глаза. Светлые. Голубые.\n\nОн делает шаг. Осторожно. — Погоди — говорит он. Голос дрожит. — Ты... ты не собираешься меня... убить?\n\nАлександр поднимает бровь. — Зачем?\n\nНиколай заминается. — Ну... ты же... убиваешь...\n\nАлександр смотрит на него. Потом усмехается.\n\nОн берёт со стола листок. Протягивает.\n\nНиколай берёт. Руки дрожат.\n\nЧитает.\n\n---\n\nЖенщина, тридцать шесть лет. Работала в частной клинике. Медсестра. Ухаживала за тяжелобольными — теми, кто не мог говорить, не мог двигаться, не мог пожаловаться. Колола им препараты, которые не были назначены. Экспериментировала. Смотрела, как они умирают. Медленно. Долго. Никто не заметил. Списали на осложнения. Дело не открывали. Она до сих пор работает. До сих пор ухаживает.\n\n---\n\nНиколай читает. Ещё раз. Потом ещё.\n\nОн знает это имя. Знает эту клинику. Он сам месяц назад читал сводку — пожилой мужчина, умер в реанимации. Осложнение. Списали. Никто не удивился.\n\nТолько там была не медсестра. Там был другой человек. Но имя — то же. Фамилия — та же. Он помнит: что-то царапнуло тогда. Что-то не сложилось.\n\nТеперь — сложилось.\n\nОн поднимает глаза.\n\nАлександр смотрит на него. Голубые глаза. Спокойные. Вернее Кукловод.\n\n— Ты понимаешь? — спрашивает он тихо.\n\nНиколай молчит.\n\n— Ты понимаешь, что я делаю?\n\nНиколай смотрит на листок. На имя. На то, что эта женщина сделала. На то, что она гуляет. На то, что она до сих пор работает. До сих пор ухаживает.\n\nИ где-то внутри, глубоко, тихо, Что-то появляется.\n\nНе громко. Не ярко.\n\nЖелание. Странное. Чужое. Но — своё.\n\nПомочь.\n\nКОНЕЦ`,
+            choices: null,
+        },
+
+        // ============================================================
+        //  СЕКРЕТНАЯ КОНЦОВКА
+        // ============================================================
+        'secretEnding': {
+            ending: true,
+            text: `Николай узнал.\n\nПо кусочкам. По мелочам, которые складывались в картину. По ночам, когда он не спал. По утрам, когда смотрел на Сашу и видел что-то не то. Что-то в глазах.\n\nОн собрал всё. Дела. Даты. Совпадения. Тетрадь, исписанная до последней страницы. Списки. Стрелки. Вопросы.\n\nИ однажды ночью, один, за столом он понял.\n\nКукловод — это Саша.\n\nТочно. Он мог доказать.\n\nИ — не смог.\n\nОн сидел над тетрадью. Смотрел на буквы. На имя. На стрелки, которые сходились в одной точке.\n\nОн должен был позвонить. Должен был доложить. Должен был сделать то, что делал всегда — то, что было правильно.\n\nНо не мог.\n\nРука не поднималась. Телефон лежал рядом. Тёмный. Молчащий. Он смотрел на него. Минуту. Две. Пять.\n\nПотом закрыл тетрадь. Убрал в ящик. Лёг. Уставился в потолок.\n\nИ поник.\n\n---\n\nОн стал другим.\n\nТихим. Медленным. Будто что-то внутри выключили.\n\nОн приходил на работу. Делал что надо. Отвечал. Кивал. Но глаза были пустые. Как у человека, который знает что-то, чего знать не хотел.\n\nСаша замечал. С первого дня.\n\n— Коль. Ты чего?\n\n— Ничего.\n\n— Ты выглядишь... не так.\n\n— Устал.\n\n— Ты не устал. Ты — другое.\n\n— Саш, всё нормально.\n\nАлександр не верил. Но не давил. Сначала.\n\nДень. Два. Неделя.\n\nНиколай таял. Молчал. Смотрел в стол. Забывал есть. Забывал пить. Забывал, куда шёл, когда выходил из кабинета.\n\nАлександр смотрел на это. И что-то в нём сжималось. Он не понимал, что. Но сжималось.\n\nОднажды вечером, они остались одни, он не выдержал.\n\n— Коль.\n\n— М.\n\n— Сядь.\n\nНиколай сел. Медленно. Будто через силу.\n\nАлександр сел напротив. Близко. Посмотрел в глаза.\n\n— Говори.\n\n— Что говорить?\n\n— Всё. Что с тобой. Ты не спишь. Ты не ешь. Ты молчишь. Ты — не ты. Говори.\n\n— Саш, я...\n\n— Не «я». Говори. Пожалуйста.\n\nНиколай молчал. Долго. Смотрел в стол. Потом — в окно. Потом — на Сашу.\n\n— Я не могу.\n\n— Почему?\n\n— Потому что... — он замолчал. — Потому что если скажу — всё изменится.\n\n— Что изменится?\n\n— Всё.\n\nАлександр наклонился ближе.\n\n— Коль. Что бы это ни было, говори. Я не уйду. Понял? Что бы это ни было.\n\nНиколай смотрел на него. Долго.\n\nПотом — выдохнул. Будто сбросил что-то. Тяжёлое. Которое нёс слишком долго.\n\n— Саш. Я знаю, кто Кукловод.\n\nТишина.\n\nАлександр не двинулся.\n\n— Кто?\n\nНиколай молчал. Смотрел на него.\n\n— Кто, Коль?\n\n— Ты.\n\nСлово упало. Тихо. Но будто громко.\n\nАлександр замер.\n\nОн смотрел на Колю. Долго. Не мигая.\n\n— Что?\n\n— Ты. Это ты. Я... я собрал всё. Дела. Даты. Совпадения. Всё сходится. Я проверял. Я перепроверял. Это ты.\n\n— Коль. Это... это бред.\n\n— Нет.\n\n— Это бред. Я не...\n\n— Саш.\n\n— Я не Кукловод. Я не убиваю. Я...\n\n— Саш. Я видел.\n\nАлександр замолчал.\n\n— Что ты видел?\n\n— Фигурки. Глиняные. У тебя дома. Полка. Я видел. Я заходил. Ты не помнил. Но я видел.\n\nАлександр смотрел на него. И в его глазах, Николай видел это, что-то дрогнуло. Что-то, что не было игрой. Что-то настоящее. Что-то страшное.\n\n— Я не помню — сказал Александр тихо. — Я не помню.\n\n— Саша.\n\n— Я не помню, как...\n\n— Саш.\n\n— Коль. Я не помню.\n\nНиколай взял его за руку. Крепко.\n\n— Саш.\n\nАлександр смотрел на него. В глазах растерянно. Как у человека, который только что узнал, что его жизнь — не его.\n\n— Что мне делать? — спросил он. Тихо. Беспомощно.\n\n— Не знаю.\n\n— Коль. Что мне делать?\n\n— Я не знаю, Саш. Я не знаю.\n\nПотом Николай сказал:\n\n— Надо к врачу.\n\n— К какому?\n\n— К психологу. Хорошему. Который не сдаст.\n\n— Ты думаешь...\n\n— Я думаю, это не ты. Я думаю, это что-то в тебе. Что-то, что не ты. И это надо лечить.\n\nАлександр молчал. Долго. Потом кивнул.\n\n— Хорошо.\n\n---\n\nОни пошли домой. Молча. Рядом.\n\nАлександр вдруг остановился.\n\n— Коль.\n\n— М?\n\n— Ты... ты не сдал меня.\n\n— Нет.\n\n— Почему?\n\nНиколай молчал.\n\n— Потому что ты... Потому что тебя сломали. Потому что ты — не виноват. Потому что... — он замолчал. — Потому что я тебя люблю.\n\nАлександр смотрел на него. Потом — улыбнулся и обнял.\n\nИ где-то внутри, что-то начинало выправляться. Медленно. Долго.\n\nНо — начинало.\n\nКОНЕЦ`,
+            choices: null,
+        },
+    };
+
+    // ============================================================
+    //  ПЛАВНЫЙ ПЕРЕХОД
+    // ============================================================
+    function transitionTo(nodeId) {
+        if (state.isTransitioning) return;
+        state.isTransitioning = true;
+
+        const sceneEl = document.getElementById('scene');
+        sceneEl.classList.remove('fade-in');
+        sceneEl.classList.add('fade-out');
+
+        setTimeout(() => {
+            showNode(nodeId, true);
+            sceneEl.classList.remove('fade-out');
+            sceneEl.classList.add('fade-in');
+            state.isTransitioning = false;
+        }, 450);
+    }
+
+    // ============================================================
+    //  ОТОБРАЖЕНИЕ УЗЛА
+    // ============================================================
+    function showNode(nodeId, isTransition) {
+        const node = nodes[nodeId];
+        if (!node) return;
+
+        state.currentNode = nodeId;
+        const storyEl = document.getElementById('story');
+        const questionEl = document.getElementById('questionLabel');
+        const choicesEl = document.getElementById('choices');
+        const restartBtn = document.getElementById('restartBtn');
+
+        storyEl.classList.remove('fade-in');
+        questionEl.style.animation = 'none';
+        void storyEl.offsetWidth;
+        void questionEl.offsetWidth;
+        questionEl.style.animation = '';
+        storyEl.classList.add('fade-in');
+
+        storyEl.classList.remove('secret');
+
+        if (node.ending) {
+            storyEl.innerHTML = `<span class="ending-mark">К O Н Е Ц</span>` + node.text.replace(/\n/g, '<br>');
+            questionEl.textContent = '';
+            choicesEl.innerHTML = '';
+            restartBtn.style.display = 'inline-block';
+            if (nodeId === 'secretEnding') storyEl.classList.add('secret');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        if (node.riddle) {
+            renderRiddle(node, storyEl, questionEl, choicesEl, restartBtn);
+            return;
+        }
+
+        if (node.leap) {
+            storyEl.innerHTML = `<span class="leap-scene"><span class="leap-mark">⚡ ПЕРЕСКОК</span>${node.text.replace(/\n/g, '<br>')}</span>`;
+            questionEl.textContent = node.question || '';
+            choicesEl.innerHTML = '';
+            if (node.choices) {
+                node.choices.forEach((choice) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.innerHTML = `<span class="letter">${choice.letter}.</span> ${choice.text}`;
+                    btn.addEventListener('click', () => transitionTo(choice.next));
+                    choicesEl.appendChild(btn);
+                });
+            }
+            restartBtn.style.display = 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        if (nodeId === 'teaScene') {
+            storyEl.innerHTML = node.text.replace(/\n/g, '<br>');
+            questionEl.textContent = node.question || '';
+            choicesEl.innerHTML = '';
+            if (node.choices) {
+                node.choices.forEach((choice) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.innerHTML = `<span class="letter">${choice.letter}.</span> ${choice.text}`;
+                    btn.addEventListener('click', () => transitionTo(choice.next));
+                    choicesEl.appendChild(btn);
+                });
+            }
+            restartBtn.style.display = 'none';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        storyEl.innerHTML = node.text.replace(/\n/g, '<br>');
+        questionEl.textContent = node.question || '';
+        choicesEl.innerHTML = '';
+
+        if (node.choices) {
+            node.choices.forEach((choice) => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerHTML = `<span class="letter">${choice.letter}.</span> ${choice.text}`;
+                btn.addEventListener('click', () => transitionTo(choice.next));
+                choicesEl.appendChild(btn);
+            });
+        }
+
+        restartBtn.style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============================================================
+    //  РЕНДЕР ЗАГАДКИ
+    // ============================================================
+    function renderRiddle(node, storyEl, questionEl, choicesEl, restartBtn) {
+        const fullText = node.text + '\n\n' + node.riddle.intro;
+        storyEl.innerHTML = fullText.replace(/\n/g, '<br>');
+        questionEl.textContent = node.question || 'ЗАГАДКА';
+        choicesEl.innerHTML = '';
+        restartBtn.style.display = 'none';
+
+        const key = node.riddleKey || state.currentNode;
+
+        if (state.riddleAnswered[key]) {
+            const saved = state.riddleAnswered[key];
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'riddle-result ' + (saved.correct ? 'riddle-correct' : 'riddle-wrong');
+            resultDiv.innerHTML = `<span class="label">${saved.correct ? '✓ ВЕРНО' : '✗ НЕВЕРНО'}</span>` +
+                (saved.correct ? node.riddle.explanation : node.riddle.wrongExplanation) +
+                (saved.correct ? '' : '<br><br><em>Правильный ответ: ' + node.riddle.options.find(o => o.correct).letter + ' — ' + node.riddle.options.find(o => o.correct).text + '</em>');
+            storyEl.appendChild(resultDiv);
+
+            const contDiv = document.createElement('div');
+            contDiv.className = 'riddle-continue';
+            const contBtn = document.createElement('button');
+            contBtn.className = 'choice-btn';
+            contBtn.innerHTML = '<span class="letter">→</span> Продолжить';
+            contBtn.addEventListener('click', () => transitionTo(node.next));
+            contDiv.appendChild(contBtn);
+            choicesEl.appendChild(contDiv);
+            return;
+        }
+
+        node.riddle.options.forEach((opt) => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.innerHTML = `<span class="letter">${opt.letter}.</span> ${opt.text}`;
+            btn.addEventListener('click', () => {
+                state.riddleAnswered[key] = {
+                    correct: opt.correct,
+                    chosen: opt.letter,
+                };
+                renderRiddle(node, storyEl, questionEl, choicesEl, restartBtn);
+            });
+            choicesEl.appendChild(btn);
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ============================================================
+    //  ПЕРЕЗАПУСК
+    // ============================================================
+    document.getElementById('restartBtn').addEventListener('click', () => {
+        state.riddleAnswered = {};
+        showNode('start');
+    });
+
+    showNode('start');
+</script>
+</body>
+</html>
